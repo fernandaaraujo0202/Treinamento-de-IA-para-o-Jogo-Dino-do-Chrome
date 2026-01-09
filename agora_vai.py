@@ -1,4 +1,8 @@
 # captura de tela
+from stable_baselines3 import DQN
+from stable_baselines3.common import env_checker
+from stable_baselines3.common.callbacks import BaseCallback
+import os
 from mss import mss
 # enviar comandos
 import pydirectinput
@@ -42,13 +46,15 @@ class Game(Env):
 
         # vendo se o jogo acabou
         done, done_cap = self.get_done()
+        terminated = done
+        truncated = False
         # pegando a próxima observação
         new_observation = self.get_observation()
         # reward - por sobreviver
         reward = 1
         info = {}
 
-        return new_observation, reward, done, info
+        return new_observation, reward, terminated, truncated, info
 
     # vizualizar o jogo
     def render(self):
@@ -66,8 +72,13 @@ class Game(Env):
     def close(self):
         cv2.destroyAllWindows()
 
-    def reset(self):
-        pass
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        time.sleep(1)
+        pydirectinput.click(x=150, y=200)
+        pydirectinput.press('space')
+
+        return self.get_observation(), {}
 
     def get_observation(self):
 
@@ -103,8 +114,73 @@ env = Game()
 done, done_cap = env.get_done()
 
 
-# testes
-# print(done, res)
+# ---------------- testes ----------
 
-plt.imshow(env.render())
-plt.show
+obs = env.get_observation()
+# plt.imshow(cv2.cvtColor(obs[0], cv2.COLOR_BGR2RGB))
+# plt.show()
+
+done, done_cap = env.get_done()
+# print(done)
+# plt.imshow(done_cap)
+# plt.show()
+# print(pytesseract.image_to_string(done_cap))
+
+for episode in range(10):
+    obs = env.reset()
+    done = False
+    total_reward = 0
+    while not done:
+        obs, reward, done, info = env.step(env.action_space.sample())
+        total_reward += reward
+    print(f"total Reward for episode {episode} is {total_reward}")
+
+# -------------------TRAIN---------------
+
+env_checker.check_env(env)
+
+
+class TrainAndLoggingCallback(BaseCallback):
+    def __init__(self, check_freq, save_path, verbose=1):
+        super(TrainAndLoggingCallback, self).__init__(verbose)
+        self.check_freq = check_freq
+        self.save_path = save_path
+
+    def _init_callback(self):
+        if self.save_path is not None:
+            os.makedirs(self.save_path, exist_ok=True)
+
+    def _on_step(self):
+        if self.n.calls % self.check_freq == 0:
+            model_path = os.path.join(
+                self.save_path, 'best_model_{}'.format(self.n_calls))
+            self.model.save(model_path)
+        return True
+
+# ------- criando 2 diretorios: trein e logs
+
+
+CHECKPOINT_DIR = './train/'
+LOG_DIR = './logs/'
+
+callback = TrainAndLoggingCallback(check_freq=300, save_path=CHECKPOINT_DIR)
+
+
+# -------- Build DQN and Train -----------
+model = DQN('CnnPolicy', env, tensorboard_log=LOG_DIR,
+            verbose=1, buffer_size=1200000, learning_starts=0)
+
+# kick of training
+model.learn(total_timesteps=1000, callback=callback)
+
+# ---Test out Model
+model = DQN.load(os.path.join('train_first', 'best_model'))
+for episode in range(10):
+    obs = env.reset()
+    done = False
+    total_reward = 0
+    while not done:
+        action, _ = model.predict(obs)
+        obs, reward, done, info = env.step(int(action))
+        total_reward += reward
+    print(f"total Reward for episode {episode} is {total_reward}")

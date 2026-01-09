@@ -1,1 +1,5 @@
-pip install mss
+pip install torch torchvision torchaudio
+pip list
+pip install stable-baselines3[extra] protobuf==3.20.*
+pip install mss pydirectinput pytesseract 
+pip install gymnasium

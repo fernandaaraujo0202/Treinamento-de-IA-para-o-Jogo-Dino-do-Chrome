@@ -1,5 +1,7 @@
 # 🦖 Dino AI — Reinforcement Learning com Visão Computacional
 
+![Status do Projeto](https://img.shields.io/badge/status-concluído-green)
+
 Este projeto implementa um agente de Reinforcement Learning (DQN) que aprende a jogar o jogo do dinossauro do Chrome utilizando captura de tela, processamento de imagem e OCR. 
 
 O ambiente é customizado usando Gymnasium, e o treinamento é feito com Stable-Baselines3.
